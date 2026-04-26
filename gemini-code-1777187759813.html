@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>科技风实时计算器</title>
+<style>
+  /* 基础全局设定与科技感暗黑背景 */
+  body {
+    background-color: #05050a;
+    color: #00ffff;
+    font-family: 'Courier New', Courier, monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  /* 计算器主体面板外发光玻璃拟态 */
+  .calculator {
+    background: rgba(0, 20, 40, 0.4);
+    padding: 25px;
+    border-radius: 20px;
+    box-shadow: 0 0 30px rgba(0, 255, 255, 0.15), inset 0 0 15px rgba(0, 255, 255, 0.05);
+    border: 1px solid rgba(0, 255, 255, 0.3);
+    width: 320px;
+    backdrop-filter: blur(10px);
+  }
+
+  /* 显示屏区域 */
+  .display {
+    background: #020205;
+    border: 1px solid #00ffff;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    text-align: right;
+    box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  /* 算式输入层 */
+  #expression {
+    font-size: 1.2em;
+    color: #008888;
+    min-height: 24px;
+    word-wrap: break-word;
+    letter-spacing: 2px;
+  }
+
+  /* 实时结果显示层 */
+  #result {
+    font-size: 2.5em;
+    color: #00ffff;
+    font-weight: bold;
+    min-height: 48px;
+    text-shadow: 0 0 15px #00ffff;
+    margin-top: 10px;
+  }
+
+  /* 键盘网格布局 */
+  .keys {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+  }
+
+  /* 按键基础样式与悬浮/点击动效 */
+  button {
+    background: rgba(0, 255, 255, 0.05);
+    border: 1px solid rgba(0, 255, 255, 0.4);
+    color: #00ffff;
+    padding: 18px 0;
+    font-size: 1.4em;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    box-shadow: 0 0 5px rgba(0, 255, 255, 0);
+  }
+
+  button:active {
+    background: #00ffff;
+    color: #000;
+    box-shadow: 0 0 20px #00ffff;
+    transform: scale(0.92);
+  }
+
+  /* 功能键特殊颜色 (清除、退格) */
+  .action-btn {
+    color: #ff0055;
+    border-color: rgba(255, 0, 85, 0.4);
+  }
+
+  .action-btn:active {
+    background: #ff0055;
+    color: #fff;
+    box-shadow: 0 0 20px #ff0055;
+  }
+
+  /* 运算符特殊颜色 */
+  .op-btn {
+    color: #b026ff;
+    border-color: rgba(176, 38, 255, 0.4);
+  }
+
+  .op-btn:active {
+    background: #b026ff;
+    color: #fff;
+    box-shadow: 0 0 20px #b026ff;
+  }
+</style>
+</head>
+<body>
+
+<div class="calculator">
+  <div class="display">
+    <div id="expression"></div>
+    <div id="result">0</div>
+  </div>
+  <div class="keys">
+    <button class="action-btn" onclick="input('C')">C</button>
+    <button class="action-btn" onclick="input('DEL')">DEL</button>
+    <button class="op-btn" onclick="input('%')">%</button>
+    <button class="op-btn" onclick="input('/')">/</button>
+    
+    <button onclick="input('7')">7</button>
+    <button onclick="input('8')">8</button>
+    <button onclick="input('9')">9</button>
+    <button class="op-btn" onclick="input('*')">*</button>
+    
+    <button onclick="input('4')">4</button>
+    <button onclick="input('5')">5</button>
+    <button onclick="input('6')">6</button>
+    <button class="op-btn" onclick="input('-')">-</button>
+    
+    <button onclick="input('1')">1</button>
+    <button onclick="input('2')">2</button>
+    <button onclick="input('3')">3</button>
+    <button class="op-btn" onclick="input('+')">+</button>
+    
+    <button onclick="input('0')" style="grid-column: span 3;">0</button>
+    <button onclick="input('.')">.</button>
+  </div>
+</div>
+
+<script>
+  // 初始化 Web Audio API (兼容 Safari)
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  
+  function playBeep() {
+    // Safari 需要用户交互后恢复音频上下文
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    
+    // 设置为正弦波，产生干净的电子音
+    oscillator.type = 'sine'; 
+    // 快速的频率变化模拟科技感的“滴答”声
+    oscillator.frequency.setValueAtTime(900, audioCtx.currentTime); 
+    oscillator.frequency.exponentialRampToValueAtTime(1500, audioCtx.currentTime + 0.04);
+    
+    // 快速衰减的音量
+    gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime + 0.04);
+  }
+
+  function triggerHaptic() {
+    // 调用设备的震动引擎（iOS Safari 原生拦截此 API）
+    if (navigator.vibrate) {
+      navigator.vibrate(15); 
+    }
+  }
+
+  let expStr = "";
+  const expDiv = document.getElementById('expression');
+  const resDiv = document.getElementById('result');
+
+  function input(val) {
+    // 触发视听触反馈
+    playBeep();
+    triggerHaptic();
+
+    if (val === 'C') {
+      expStr = "";
+      resDiv.innerText = "0";
+    } else if (val === 'DEL') {
+      expStr = expStr.slice(0, -1);
+    } else {
+      // 基础防呆：防止连续输入多个运算符
+      const lastChar = expStr.slice(-1);
+      const operators = ['+', '-', '*', '/', '.', '%'];
+      if (operators.includes(val) && operators.includes(lastChar)) {
+         expStr = expStr.slice(0, -1) + val;
+      } else {
+         expStr += val;
+      }
+    }
+    
+    expDiv.innerText = expStr;
+    calculateRealTime();
+  }
+
+  function calculateRealTime() {
+    if (!expStr) {
+       resDiv.innerText = "0";
+       return;
+    }
+    try {
+      // 将百分号替换为JS可识别的除以100
+      let evalStr = expStr.replace(/%/g, '/100');
+      
+      // 使用 Function 构造器安全地执行基础数学运算
+      const result = new Function('return ' + evalStr)();
+      
+      // 过滤未定义、非数字或无穷大的中间状态
+      if (result !== undefined && typeof result === 'number' && !isNaN(result) && result !== Infinity) {
+         // 处理浮点数精度溢出，保留8位小数
+         resDiv.innerText = Math.round(result * 100000000) / 100000000;
+      }
+    } catch (e) {
+      // 捕获输入未完成时的语法错误（如 "5+"），此时不更新结果保持原样
+    }
+  }
+</script>
+
+</body>
+</html>
